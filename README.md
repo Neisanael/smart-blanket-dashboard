@@ -23,7 +23,7 @@ Built using **Laravel + Inertia.js + React (with Vite)**, and integrated with **
 ----
 
 ## 🚀 Tech Stack
-- **Laravel 10** (backend + Inertia middleware)  
+- **Laravel 12** (backend + Inertia middleware)  
 - **React** (frontend components, rendered via Inertia)  
 - **Vite** (bundler for React inside Laravel)  
 - **Firebase** (Authentication + Realtime Database)  
