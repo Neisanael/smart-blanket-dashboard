@@ -18,7 +18,7 @@ Built using **Laravel + Inertia.js + React (with Vite)**, and integrated with **
 ----
 
 ## 📸 Preview
-![Dashboard Screenshot](./screenshot.png)  
+![Dashboard Screenshot](./Screenshot.png)  
 
 ----
 
