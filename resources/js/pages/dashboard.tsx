@@ -27,23 +27,11 @@ export default function Dashboard() {
     const [suhuPemanas, setSuhuPemanas] = useState<number | null>(null);
     const [suhuTubuh, setSuhuTubuh] = useState<number | null>(null);
 
-    useEffect(() => {
-        const monitoringRef = ref(db, 'monitoring');
-        const unsubscribe = onValue(monitoringRef, (snapshot) => {
-            const data = snapshot.val();
-            if (data) {
-                setSuhuSelimut(data.selimut ?? 0); // 🔹 match DB key
-                setSuhuPemanas(data.heater ?? 0); // 🔹 match DB key
-                setSuhuTubuh(data.tubuh ?? 0); // 🔹 match DB key
-            }
-        });
-
-        return () => unsubscribe();
-    }, []);
-
     const [setpoint, setSetpoint] = useState<number | null>(null);
     const [speed, setSpeed] = useState<number | null>(null);
     const [power, setPower] = useState<boolean | null>(null);
+
+    const [warning, setWarning] = useState<string | null>(null);
 
     useEffect(() => {
         const controlRef = ref(db, 'control');
@@ -61,6 +49,12 @@ export default function Dashboard() {
     const updateSetpoint = (val: number) => {
         setSetpoint(val);
         set(ref(db, 'control/setpoint'), val);
+
+        // langsung cek warning juga
+        const msg = checkWarning(suhuSelimut, suhuTubuh, val);
+        setWarning(msg);
+
+        console.log('DEBUG slider setpoint:', { selimut: suhuSelimut, tubuh: suhuTubuh, setpoint: val, msg });
     };
 
     const updateSpeed = (val: number) => {
@@ -78,6 +72,49 @@ export default function Dashboard() {
         if (value === 2) return 'MEDIUM';
         if (value === 3) return 'HIGH';
         return '--';
+    };
+
+    useEffect(() => {
+        const monitoringRef = ref(db, 'monitoring');
+        const unsubscribe = onValue(monitoringRef, (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                const selimut = Number(data.selimut ?? 0);
+                const heater = Number(data.heater ?? 0);
+                const tubuh = Number(data.tubuh ?? 0);
+
+                setSuhuSelimut(selimut);
+                setSuhuPemanas(heater);
+                setSuhuTubuh(tubuh);
+
+                // panggil fungsi cek
+                const msg = checkWarning(selimut, tubuh, setpoint);
+                setWarning(msg);
+
+                console.log('DEBUG firebase:', { selimut, tubuh, msg , setpoint});
+            }
+        });
+
+        return () => unsubscribe();
+    }, [setpoint]);
+
+    const checkWarning = (selimut: number | null, tubuh: number | null, setpoint: number | null) => {
+        if (selimut === null || tubuh === null || setpoint === null) {
+            return null; // kalau ada yg belum ada datanya, gak usah kasih warning
+        }
+
+        let msg: string | null = null;
+
+        console.log(Number(selimut) > (Number(setpoint) + 3));
+        if (selimut > (Number(setpoint) + 3)) {
+            msg = `⚠️ Overheat! Suhu selimut > ${setpoint + 3} °C`;
+        }
+
+        if (tubuh >= 37.5) {
+            msg = msg ? msg + ' & suhu tubuh ≥ 37.5 °C' : '⚠️ Overheat! Suhu tubuh ≥ 37.5 °C';
+        }
+
+        return msg;
     };
 
     // Constants
@@ -217,6 +254,23 @@ export default function Dashboard() {
             </div>
 
             <h1 className="mb-8 text-center text-3xl font-bold">Blanket warmer 01</h1>
+
+            {/* 🔔 Warning Popup */}
+            {warning && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm">
+                    <div className="w-full max-w-md rounded-2xl bg-white/80 p-6 text-center shadow-2xl">
+                        <h2 className="mb-4 text-2xl font-bold text-red-700">⚠️ Overheat Detected</h2>
+                        <p className="mb-6 text-gray-900">{warning}</p>
+
+                        <button
+                            onClick={() => setWarning(null)}
+                            className="rounded-lg bg-red-600 px-4 py-2 font-semibold text-white transition hover:bg-red-700"
+                        >
+                            Tutup
+                        </button>
+                    </div>
+                </div>
+            )}
 
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
                 {/* KENDALI */}
